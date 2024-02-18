@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "prepare": "husky"
+    "postinstall": "husky init"
   },
   "keywords": [
     "yaml",
@@ -14,11 +14,7 @@
     "validate",
     "cli",
     "configuration",
-    "syntax",
-    "checker",
-    "utility",
-    "development",
-    "devops"
+    "syntax"
   ],
   "author": "Tim Paulaskas",
   "license": "ISC",
@@ -40,6 +36,7 @@
     "husky": "^9.0.11",
     "jest": "^29.7.0",
     "jest-environment-node": "^29.7.0",
+    "lint-staged": "^15.2.2",
     "nodemon": "^3.0.3",
     "prettier": "^3.2.5"
   }
