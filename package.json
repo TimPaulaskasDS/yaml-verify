@@ -1,0 +1,32 @@
+{
+  "name": "yaml-verify",
+  "version": "1.0.0",
+  "description": "A CLI utility to ensure proper formatting of YAML files.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "yaml",
+    "lint",
+    "validate",
+    "cli",
+    "configuration",
+    "syntax",
+    "checker",
+    "utility",
+    "development",
+    "devops"
+  ],
+  "author": "Tim Paulaskas",
+  "license": "ISC",
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5"
+  }
+}
