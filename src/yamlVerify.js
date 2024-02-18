@@ -7,8 +7,6 @@ import fs from 'fs'
 import ora from 'ora'
 import * as glob from 'glob' // Adjusted import statement for glob
 import _ from 'lodash'
-import packageJson from '../package.json' assert { type: 'json' };
-
 
 const checkForDuplicates = (data) => {
 	const errors = []
@@ -42,8 +40,7 @@ const findYamlFiles = (directory) => {
 }
 
 program
-  .version(packageJson.version, '-v, --version', 'Output the current version')
-  .description(packageJson.description)
+  .description('A CLI utility to ensure proper formatting of YAML files.')
 	.arguments('<filePaths...>')
 	.action(async (filePaths) => {
 		let allFiles = []
