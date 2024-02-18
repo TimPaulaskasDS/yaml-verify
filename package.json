@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "description": "A CLI utility to ensure proper formatting of YAML files.",
-  "main": "index.js",
+  "main": "src/yamlVerify.js",
+  "bin": {
+    "yaml-verify": "./src/yamlVerify.js"
+  },  
   "scripts": {
     "test": "jest",
     "postinstall": "husky init"
