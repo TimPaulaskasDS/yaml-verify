@@ -68,29 +68,6 @@ const findYamlFilesAsync = async (directory) => {
 	}
 }
 
-// Function to create a task for validating a single YAML file
-const validateYamlFileTask = (file) => ({
-	title: `Validating YAML file ${file}`,
-	task: async (ctx, task) => {
-		try {
-			const fileContents = await fsPromises.readFile(file, 'utf8')
-			const data = yaml.load(fileContents)
-			const errors = checkForDuplicates(data)
-
-			if (errors.length > 0) {
-				// Concatenate all errors into a single message, including the filename
-				const errorMessage = `File: ${file}\nErrors:\n${errors.join('\n')}`
-				throw new Error(errorMessage)
-			}
-			task.title = `Validation passed for file ${file}`
-		} catch (error) {
-			// Catch any error, add the filename to the message, and rethrow
-			error.message = `Error in file ${file}: ${error.message}`
-			throw error
-		}
-	},
-})
-
 // Asynchronously process and validate YAML files with listr2
 async function processFiles(filePaths) {
 	let allFilesPromises = filePaths.map(async (filePath) => {
@@ -110,15 +87,23 @@ async function processFiles(filePaths) {
 			title: `Validating YAML file ${file}`,
 			task: async (ctx, task) => {
 				const fileContents = await fsPromises.readFile(file, 'utf8')
-				const data = yaml.load(fileContents)
+				let data = null
+				try {
+					data = yaml.load(fileContents)
+				} catch (error) {
+					throw new Error(
+						`Validation ${chalk.bgRed.whiteBright('FAILED')} for file ${file}: ${chalk.red(error.message)}`,
+					)
+				}
 				const errors = checkForDuplicates(data)
 				if (errors.length > 0) {
 					// Generate a detailed error message including the filename
 					throw new Error(
-						`File: ${file}\nErrors:\n${errors.join('\n')}`,
+						`Validation ${chalk.bgRed.whiteBright('FAILED')} for file ${file}; Errors: ${chalk.red(errors.join('\n'))}`,
 					)
 				}
-				task.title = `Validation passed for file ${file}`
+				task.title = `Validation ${chalk.bgAnsi256(22).whiteBright('PASSED')} for file ${file}`
+				task.output = file
 			},
 		})),
 		{
@@ -141,7 +126,9 @@ async function processFiles(filePaths) {
 				validationPassed = false
 				if (totalErrors == 0) console.log()
 				totalErrors += 1
-				console.error(chalk.red(`Task '${task.title}' failed`))
+				console.error(
+					`Task '${task.title}' ${chalk.bgRed.whiteBright('FAILED')}`,
+				)
 			}
 		})
 	} catch (e) {
@@ -149,13 +136,6 @@ async function processFiles(filePaths) {
 		console.error(
 			chalk.red('Validation errors found in one or more files.'),
 		)
-		if (Array.isArray(e.errors)) {
-			e.errors.forEach((taskError) => {
-				console.error(chalk.red(taskError.error.message))
-			})
-		} else {
-			console.error(chalk.red(e.message))
-		}
 	}
 
 	// Check the overall validation result before printing the final message
