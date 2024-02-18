@@ -7,7 +7,6 @@ import fs from 'fs'
 const fsPromises = fs.promises // Use fs.promises for async operations
 import ora from 'ora'
 import * as glob from 'glob' // Adjusted import statement for glob
-import _ from 'lodash'
 
 // Asynchronous function to check for duplicates in YAML data
 const checkForDuplicates = (data) => {

@@ -27,7 +27,6 @@
     "commander": "^12.0.0",
     "glob": "^10.3.10",
     "js-yaml": "^4.1.0",
-    "lodash": "^4.17.21",
     "ora": "^8.0.1"
   },
   "devDependencies": {
