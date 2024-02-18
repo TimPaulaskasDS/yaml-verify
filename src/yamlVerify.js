@@ -128,21 +128,20 @@ async function processFiles(filePaths) {
 	)
 
 	let validationPassed = true // Track overall validation success
-  let totalFiles = 0
-  let totalErrors = 0
+	let totalFiles = 0
+	let totalErrors = 0
 
 	// Run tasks
 	try {
 		await tasks.run()
-    totalFiles = tasks.tasks.length
+		totalFiles = tasks.tasks.length
 		// Check the state of each task after running
 		tasks.tasks.forEach((task) => {
 			if (task.state === 'FAILED') {
 				validationPassed = false
-        totalErrors += 1
-				console.error(
-					chalk.red(`Task '${task.title}' failed`),
-				)
+				if (totalErrors == 0) console.log()
+				totalErrors += 1
+				console.error(chalk.red(`Task '${task.title}' failed`))
 			}
 		})
 	} catch (e) {
@@ -160,10 +159,19 @@ async function processFiles(filePaths) {
 	}
 
 	// Check the overall validation result before printing the final message
+	console.log()
 	if (validationPassed) {
-		console.log(chalk.green(`All ${totalFiles} file(s) have been successfully validated.`))
+		console.log(
+			chalk.green(
+				`All ${totalFiles} file(s) have been successfully validated.`,
+			),
+		)
 	} else {
-		console.error(chalk.red(`${totalErrors} out of ${totalFiles} file(s) failed validation.`))
+		console.error(
+			chalk.red(
+				`${totalErrors} out of ${totalFiles} file(s) failed validation.`,
+			),
+		)
 		process.exit(1)
 	}
 }
