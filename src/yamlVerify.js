@@ -61,7 +61,7 @@ const checkForDuplicates = (data) => {
 // Asynchronously find YAML files using fast-glob
 const findYamlFilesAsync = async (directory) => {
 	try {
-		const files = await glob(`${directory}/**/*.?(yaml|yml)`)
+		const files = await glob(`${directory}/**/*.?(yaml|yml)`, { onlyFiles: true, unique: true })
 		return files // Returns a Promise that resolves to an array of matching files
 	} catch (err) {
 		throw err // Propagate error
@@ -107,7 +107,7 @@ async function processFiles(filePaths) {
 			},
 		})),
 		{
-			concurrent: true, // Run tasks concurrently
+			concurrent: 50, // Run tasks concurrently
 			exitOnError: false, // Continue with other tasks even if some fail
 		},
 	)
