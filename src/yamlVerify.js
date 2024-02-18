@@ -5,46 +5,45 @@ import { program } from 'commander'
 import yaml from 'js-yaml'
 import fs from 'fs'
 import ora from 'ora'
-import * as globES from 'glob'; // Adjusted import statement for glob
+import * as glob from 'glob' // Adjusted import statement for glob
 import _ from 'lodash'
+import packageJson from '../package.json' assert { type: 'json' };
 
-const findDuplicates = (array, key) =>
-	_(array)
-		.groupBy(key)
-		.pickBy((x) => x.length > 1)
-		.value()
 
 const checkForDuplicates = (data) => {
 	const errors = []
-	Object.keys(data).forEach((key) => {
-		if (Array.isArray(data[key])) {
-			data[key].forEach((item, index) => {
+
+	Object.entries(data).forEach(([key, value]) => {
+		if (Array.isArray(value)) {
+			const seen = new Map()
+
+			value.forEach((item, index) => {
 				if (_.isPlainObject(item)) {
 					const uniqueKey = Object.keys(item)[0]
-					const duplicates = findDuplicates(data[key], uniqueKey)
-					if (!_.isEmpty(duplicates)) {
-						const duplicateKeys = Object.keys(duplicates)
-						const errorMessage = `Duplicate entries found in '${key}' for key '${uniqueKey}': ${duplicateKeys.join(', ')}`
-						if (!errors.includes(errorMessage)) {
-							errors.push(errorMessage)
-						}
+					const uniqueValue = item[uniqueKey]
+
+					if (seen.has(uniqueValue)) {
+						const errorMessage = `Duplicate entry found in '${key}' at index ${index} for key '${uniqueKey}': ${uniqueValue}`
+						errors.push(errorMessage)
+					} else {
+						seen.set(uniqueValue, index)
 					}
 				}
 			})
 		}
 	})
+
 	return errors
 }
 
 const findYamlFiles = (directory) => {
-  const files = globES.sync(`${directory}/**/*.?(yaml|yml)`);
-  return files;
+	const files = glob.sync(`${directory}/**/*.?(yaml|yml)`)
+	return files
 }
 
-
 program
-	.version('1.0.0')
-	.description('A CLI tool for validating YAML files.')
+  .version(packageJson.version, '-v, --version', 'Output the current version')
+  .description(packageJson.description)
 	.arguments('<filePaths...>')
 	.action(async (filePaths) => {
 		let allFiles = []
@@ -74,9 +73,7 @@ program
 					hasErrors = true // Set flag to true if any errors occurred
 				} else {
 					spinner.succeed(
-						chalk.green(
-							`Validation passed for file ${file}.`,
-						),
+						chalk.green(`Validation passed for file ${file}.`),
 					)
 				}
 			} catch (e) {
@@ -97,4 +94,3 @@ program
 	})
 
 program.parse()
-export { findDuplicates, checkForDuplicates }
