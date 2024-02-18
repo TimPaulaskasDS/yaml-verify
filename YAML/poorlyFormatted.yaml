@@ -1,0 +1,9 @@
+items:
+  item1:
+    name: apple
+    price: $1.99
+  item2:
+   name: orange
+  item3
+    name: banana
+    price: $0.99
