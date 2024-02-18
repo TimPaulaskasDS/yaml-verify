@@ -1,16 +1,13 @@
 #!/usr/bin/env node
 
 import fs from 'fs'
-import { promisify } from 'util'
 import chalk from 'chalk'
 import { program } from 'commander'
 import yaml from 'js-yaml'
 import glob from 'fast-glob'
 import ora from 'ora'
-const fsPromises = fs.promises
 
-const readFileAsync = promisify(fs.readFile)
-const startTime = process.hrtime(); // Capture the start time
+const startTime = new Date() // Capture the start time
 
 let validationFailed = false // Flag to track any validation failure
 let totalErrors = 0
@@ -82,7 +79,7 @@ const findYamlFilesAsync = async (directory) => {
 
 async function validateFile(file) {
 	try {
-		const fileContents = await readFileAsync(file, 'utf8')
+		const fileContents = await fs.promises.readFile(file, 'utf8')
 		const data = yaml.load(fileContents)
 		const errors = checkForDuplicates(data)
 		if (errors.length > 0) {
@@ -97,7 +94,7 @@ async function validateFile(file) {
 async function processFilesInBatches(files, batchSize = 50) {
 	let index = 0
 	const results = []
-    const spinner = ora('Validating YAML files...').start(); // Start the spinner
+	const spinner = ora('Validating YAML files...').start() // Start the spinner
 
 	while (index < files.length) {
 		const batch = files.slice(index, index + batchSize)
@@ -137,7 +134,7 @@ program
 	.action(async (filePaths) => {
 		showSuccess = program.opts().showSuccess // Update the showSuccess flag based on the command line option
 		let allFilesPromises = filePaths.map(async (filePath) => {
-			const stat = await fsPromises.stat(filePath)
+			const stat = await fs.promises.stat(filePath)
 			if (stat.isDirectory()) {
 				return findYamlFilesAsync(filePath)
 			}
@@ -152,9 +149,10 @@ program
 			process.exit(1)
 		})
 
-		const [seconds, nanoseconds] = process.hrtime(startTime);
-        const elapsed = (seconds + nanoseconds / 1e9).toFixed(2); // Convert to seconds and format
-        console.log(`\nTotal execution time: ${elapsed} seconds.`);
+		// Execution of some code...
+		const endTime = new Date() // Capture the end time
+		const elapsed = (endTime - startTime) / 1000 // Calculate the elapsed time in seconds
+		console.log(`Total execution time: ${elapsed.toFixed(2)} seconds.`)
 
 		// Check the flag and exit with status code 1 if any validation failed
 		if (validationFailed) {
