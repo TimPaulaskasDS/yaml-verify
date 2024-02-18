@@ -71,87 +71,103 @@ const findYamlFilesAsync = async (directory) => {
 
 // Function to create a task for validating a single YAML file
 const validateYamlFileTask = (file) => ({
-  title: `Validating YAML file ${file}`,
-  task: async (ctx, task) => {
-      try {
-          const fileContents = await fsPromises.readFile(file, 'utf8');
-          const data = yaml.load(fileContents);
-          const errors = checkForDuplicates(data);
+	title: `Validating YAML file ${file}`,
+	task: async (ctx, task) => {
+		try {
+			const fileContents = await fsPromises.readFile(file, 'utf8')
+			const data = yaml.load(fileContents)
+			const errors = checkForDuplicates(data)
 
-          if (errors.length > 0) {
-              // Concatenate all errors into a single message, including the filename
-              const errorMessage = `File: ${file}\nErrors:\n${errors.join('\n')}`;
-              throw new Error(errorMessage);
-          }
-          task.title = `Validation passed for file ${file}`;
-      } catch (error) {
-          // Catch any error, add the filename to the message, and rethrow
-          error.message = `Error in file ${file}: ${error.message}`;
-          throw error;
-      }
-  }
-});
+			if (errors.length > 0) {
+				// Concatenate all errors into a single message, including the filename
+				const errorMessage = `File: ${file}\nErrors:\n${errors.join('\n')}`
+				throw new Error(errorMessage)
+			}
+			task.title = `Validation passed for file ${file}`
+		} catch (error) {
+			// Catch any error, add the filename to the message, and rethrow
+			error.message = `Error in file ${file}: ${error.message}`
+			throw error
+		}
+	},
+})
 
 // Asynchronously process and validate YAML files with listr2
 async function processFiles(filePaths) {
-  let allFilesPromises = filePaths.map(async (filePath) => {
-      const stat = await fsPromises.stat(filePath);
-      if (stat.isDirectory()) {
-          return findYamlFilesAsync(filePath);
-      }
-      return [filePath];
-  });
+	let allFilesPromises = filePaths.map(async (filePath) => {
+		const stat = await fsPromises.stat(filePath)
+		if (stat.isDirectory()) {
+			return findYamlFilesAsync(filePath)
+		}
+		return [filePath]
+	})
 
-  let allFilesArrays = await Promise.all(allFilesPromises);
-  let allFiles = allFilesArrays.flat();
+	let allFilesArrays = await Promise.all(allFilesPromises)
+	let allFiles = allFilesArrays.flat()
 
-  // Create listr2 tasks for each file
-  const tasks = new Listr(
-      allFiles.map(file => ({
-          title: `Validating YAML file ${file}`,
-          task: async (ctx, task) => {
-              const fileContents = await fsPromises.readFile(file, 'utf8');
-              const data = yaml.load(fileContents);
-              const errors = checkForDuplicates(data);
-              if (errors.length > 0) {
-                  // Generate a detailed error message including the filename
-                  throw new Error(`File: ${file}\nErrors:\n${errors.join('\n')}`);
-              }
-              task.title = `Validation passed for file ${file}`;
-          }
-      })),
-      {
-          concurrent: true, // Run tasks concurrently
-          exitOnError: false, // Continue with other tasks even if some fail
-      }
-  );
+	// Create listr2 tasks for each file
+	const tasks = new Listr(
+		allFiles.map((file) => ({
+			title: `Validating YAML file ${file}`,
+			task: async (ctx, task) => {
+				const fileContents = await fsPromises.readFile(file, 'utf8')
+				const data = yaml.load(fileContents)
+				const errors = checkForDuplicates(data)
+				if (errors.length > 0) {
+					// Generate a detailed error message including the filename
+					throw new Error(
+						`File: ${file}\nErrors:\n${errors.join('\n')}`,
+					)
+				}
+				task.title = `Validation passed for file ${file}`
+			},
+		})),
+		{
+			concurrent: true, // Run tasks concurrently
+			exitOnError: false, // Continue with other tasks even if some fail
+		},
+	)
 
-  let validationPassed = true; // Track overall validation success
+	let validationPassed = true // Track overall validation success
+  let totalFiles = 0
+  let totalErrors = 0
 
-  // Run tasks
-  try {
-      await tasks.run();
-  } catch (e) {
-      validationPassed = false; // Update flag if any task fails
-      console.error(chalk.red('Validation errors found in one or more files.'));
-      if (Array.isArray(e.errors)) {
-          e.errors.forEach((taskError) => {
-              console.error(chalk.red(taskError.error.message));
-          });
-      } else {
-          console.error(chalk.red(e.message));
-      }
-  }
+	// Run tasks
+	try {
+		await tasks.run()
+    totalFiles = tasks.tasks.length
+		// Check the state of each task after running
+		tasks.tasks.forEach((task) => {
+			if (task.state === 'FAILED') {
+				validationPassed = false
+        totalErrors += 1
+				console.error(
+					chalk.red(`Task '${task.title}' failed`),
+				)
+			}
+		})
+	} catch (e) {
+		validationPassed = false // Update flag if any task fails
+		console.error(
+			chalk.red('Validation errors found in one or more files.'),
+		)
+		if (Array.isArray(e.errors)) {
+			e.errors.forEach((taskError) => {
+				console.error(chalk.red(taskError.error.message))
+			})
+		} else {
+			console.error(chalk.red(e.message))
+		}
+	}
 
-  // Check the overall validation result before printing the final message
-  if (validationPassed) {
-      console.log(chalk.green('All files have been successfully validated.'));
-  } else {
-      console.error(chalk.red('One or more files failed validation.'));
-      process.exit(1);
-  }
+	// Check the overall validation result before printing the final message
+	if (validationPassed) {
+		console.log(chalk.green(`All ${totalFiles} file(s) have been successfully validated.`))
+	} else {
+		console.error(chalk.red(`${totalErrors} out of ${totalFiles} file(s) failed validation.`))
+		process.exit(1)
+	}
 }
-
 
 // Setting up the CLI utility with commander
 program
