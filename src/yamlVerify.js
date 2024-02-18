@@ -11,6 +11,8 @@ import { promisify } from 'util'
 const readFileAsync = promisify(fs.readFile)
 let validationFailed = false // Flag to track any validation failure
 let totalErrors = 0
+let totalFiles = 0
+let showSuccess = false
 
 // Asynchronous function to check for duplicates in YAML data
 const checkForDuplicates = (data) => {
@@ -101,13 +103,17 @@ async function processFilesInBatches(files, batchSize = 50) {
 	}
 
 	results.forEach((result) => {
+		totalFiles += 1
 		if (
 			result.status === 'fulfilled' &&
 			result.value.status === 'fulfilled'
 		) {
-			console.log(
-				`${chalk.green('✓')} Validation ${chalk.bgAnsi256(22).whiteBright('PASSED')} for file ${result.value.file}`,
-			)
+			if (showSuccess) {
+				// Only log success messages if showSuccess is true
+				console.log(
+					`${chalk.green('✓')} Validation ${chalk.bgAnsi256(22).whiteBright('PASSED')} for file ${result.value.file}`,
+				)
+			}
 		} else if (result.value.status === 'rejected') {
 			console.error(
 				`${chalk.red('✗')} Validation ${chalk.bgRed.whiteBright('FAILED')} for file ${result.value.file}; Errors: ${chalk.redBright(result.value.reason)}\n`,
@@ -121,8 +127,10 @@ async function processFilesInBatches(files, batchSize = 50) {
 // Setting up the CLI utility with commander
 program
 	.description('A CLI utility to ensure proper formatting of YAML files.')
+	.option('-s, --show-success', 'Display messages for successful validations')
 	.arguments('<filePaths...>')
 	.action(async (filePaths) => {
+		showSuccess = program.opts().showSuccess // Update the showSuccess flag based on the command line option
 		let allFilesPromises = filePaths.map(async (filePath) => {
 			const stat = await fsPromises.stat(filePath)
 			if (stat.isDirectory()) {
@@ -142,22 +150,21 @@ program
 		// Check the flag and exit with status code 1 if any validation failed
 		if (validationFailed) {
 			console.error(
-				`\nStatus: ${totalErrors} file(s) ${chalk.bgRed.whiteBright('FAILED')} validation.`
+				`\nStatus: ${totalErrors} file(s) ${chalk.bgRed.whiteBright('FAILED')} validation; ${totalFiles - totalErrors} files(s) ${chalk.bgAnsi256(22).whiteBright('PASSED')} validation..`,
 			)
 			process.exit(1)
 		} else {
 			console.log(
-				`\nStatus: ${chalk.bgAnsi256(22).whiteBright('PASSED')} validation.`
+				`\nStatus: ${totalFiles} file(s) ${chalk.bgAnsi256(22).whiteBright('PASSED')} validation.`,
 			)
-
 		}
 	})
 
 program.parse(process.argv)
 
 process.on('SIGINT', () => {
-    console.log(chalk.yellow('\nProcess interrupted by user. Exiting...'));
-    // Perform any necessary cleanup here
+	console.log(chalk.yellow('\nProcess interrupted by user. Exiting...'))
+	// Perform any necessary cleanup here
 
-    process.exit(1); // Exit with a non-zero status code to indicate interruption
-});
+	process.exit(1) // Exit with a non-zero status code to indicate interruption
+})
