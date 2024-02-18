@@ -28,6 +28,7 @@
     "fast-glob": "^3.3.2",
     "glob": "^10.3.10",
     "js-yaml": "^4.1.0",
+    "listr2": "^8.0.2",
     "ora": "^8.0.1"
   },
   "devDependencies": {

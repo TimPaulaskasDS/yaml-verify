@@ -7,6 +7,7 @@ import fs from 'fs'
 const fsPromises = fs.promises // Use fs.promises for async operations
 import ora from 'ora'
 import glob from 'fast-glob'
+import { Listr } from 'listr2'
 
 // Asynchronous function to check for duplicates in YAML data
 const checkForDuplicates = (data) => {
@@ -68,44 +69,89 @@ const findYamlFilesAsync = async (directory) => {
 	}
 }
 
-// Asynchronously process and validate YAML files with parallel processing
+// Function to create a task for validating a single YAML file
+const validateYamlFileTask = (file) => ({
+  title: `Validating YAML file ${file}`,
+  task: async (ctx, task) => {
+      try {
+          const fileContents = await fsPromises.readFile(file, 'utf8');
+          const data = yaml.load(fileContents);
+          const errors = checkForDuplicates(data);
+
+          if (errors.length > 0) {
+              // Concatenate all errors into a single message, including the filename
+              const errorMessage = `File: ${file}\nErrors:\n${errors.join('\n')}`;
+              throw new Error(errorMessage);
+          }
+          task.title = `Validation passed for file ${file}`;
+      } catch (error) {
+          // Catch any error, add the filename to the message, and rethrow
+          error.message = `Error in file ${file}: ${error.message}`;
+          throw error;
+      }
+  }
+});
+
+// Asynchronously process and validate YAML files with listr2
 async function processFiles(filePaths) {
-	let allFilesPromises = filePaths.map(async (filePath) => {
-		const stat = await fsPromises.stat(filePath)
-		if (stat.isDirectory()) {
-			return findYamlFilesAsync(filePath) // Returns a promise
-		}
-		return [filePath] // Wrap in array to normalize structure
-	})
+  let allFilesPromises = filePaths.map(async (filePath) => {
+      const stat = await fsPromises.stat(filePath);
+      if (stat.isDirectory()) {
+          return findYamlFilesAsync(filePath);
+      }
+      return [filePath];
+  });
 
-	let allFilesArrays = await Promise.all(allFilesPromises) // Resolve all promises
-	let allFiles = allFilesArrays.flat() // Flatten array of arrays into a single array
+  let allFilesArrays = await Promise.all(allFilesPromises);
+  let allFiles = allFilesArrays.flat();
 
-	// Process files in parallel
-	const validationPromises = allFiles.map(async (file) => {
-		const spinner = ora(`Validating YAML file ${file}...`).start()
+  // Create listr2 tasks for each file
+  const tasks = new Listr(
+      allFiles.map(file => ({
+          title: `Validating YAML file ${file}`,
+          task: async (ctx, task) => {
+              const fileContents = await fsPromises.readFile(file, 'utf8');
+              const data = yaml.load(fileContents);
+              const errors = checkForDuplicates(data);
+              if (errors.length > 0) {
+                  // Generate a detailed error message including the filename
+                  throw new Error(`File: ${file}\nErrors:\n${errors.join('\n')}`);
+              }
+              task.title = `Validation passed for file ${file}`;
+          }
+      })),
+      {
+          concurrent: true, // Run tasks concurrently
+          exitOnError: false, // Continue with other tasks even if some fail
+      }
+  );
 
-		try {
-			const fileContents = await fsPromises.readFile(file, 'utf8')
-			const data = yaml.load(fileContents)
-			const errors = checkForDuplicates(data)
+  let validationPassed = true; // Track overall validation success
 
-			if (errors.length > 0) {
-				spinner.fail(`Validation failed for file ${file}.`)
-				errors.forEach((error) => console.error(error))
-			} else {
-				spinner.succeed(`Validation passed for file ${file}.`)
-			}
-		} catch (e) {
-			spinner.fail(`YAML file validation failed for file ${file}.`)
-			console.error(e.message)
-		}
-		console.log()
-	})
+  // Run tasks
+  try {
+      await tasks.run();
+  } catch (e) {
+      validationPassed = false; // Update flag if any task fails
+      console.error(chalk.red('Validation errors found in one or more files.'));
+      if (Array.isArray(e.errors)) {
+          e.errors.forEach((taskError) => {
+              console.error(chalk.red(taskError.error.message));
+          });
+      } else {
+          console.error(chalk.red(e.message));
+      }
+  }
 
-	// Wait for all validations to complete
-	await Promise.allSettled(validationPromises)
+  // Check the overall validation result before printing the final message
+  if (validationPassed) {
+      console.log(chalk.green('All files have been successfully validated.'));
+  } else {
+      console.error(chalk.red('One or more files failed validation.'));
+      process.exit(1);
+  }
 }
+
 
 // Setting up the CLI utility with commander
 program
