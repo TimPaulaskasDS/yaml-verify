@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 
+import fs from 'fs'
+import { promisify } from 'util'
 import chalk from 'chalk'
 import { program } from 'commander'
 import yaml from 'js-yaml'
-import fs from 'fs'
-const fsPromises = fs.promises
 import glob from 'fast-glob'
-import { promisify } from 'util'
+import ora from 'ora'
+const fsPromises = fs.promises
 
 const readFileAsync = promisify(fs.readFile)
+const startTime = process.hrtime(); // Capture the start time
+
 let validationFailed = false // Flag to track any validation failure
 let totalErrors = 0
 let totalFiles = 0
@@ -94,6 +97,7 @@ async function validateFile(file) {
 async function processFilesInBatches(files, batchSize = 50) {
 	let index = 0
 	const results = []
+    const spinner = ora('Validating YAML files...').start(); // Start the spinner
 
 	while (index < files.length) {
 		const batch = files.slice(index, index + batchSize)
@@ -102,6 +106,7 @@ async function processFilesInBatches(files, batchSize = 50) {
 		index += batchSize
 	}
 
+	spinner.clear()
 	results.forEach((result) => {
 		totalFiles += 1
 		if (
@@ -147,10 +152,14 @@ program
 			process.exit(1)
 		})
 
+		const [seconds, nanoseconds] = process.hrtime(startTime);
+        const elapsed = (seconds + nanoseconds / 1e9).toFixed(2); // Convert to seconds and format
+        console.log(`\nTotal execution time: ${elapsed} seconds.`);
+
 		// Check the flag and exit with status code 1 if any validation failed
 		if (validationFailed) {
 			console.error(
-				`\nStatus: ${totalErrors} file(s) ${chalk.bgRed.whiteBright('FAILED')} validation; ${totalFiles - totalErrors} files(s) ${chalk.bgAnsi256(22).whiteBright('PASSED')} validation..`,
+				`\nStatus: ${totalErrors} file(s) ${chalk.bgRed.whiteBright('FAILED')} validation; ${totalFiles - totalErrors} files(s) ${chalk.bgAnsi256(22).whiteBright('PASSED')} validation.`,
 			)
 			process.exit(1)
 		} else {
