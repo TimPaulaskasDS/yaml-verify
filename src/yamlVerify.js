@@ -154,3 +154,10 @@ program
 	})
 
 program.parse(process.argv)
+
+process.on('SIGINT', () => {
+    console.log(chalk.yellow('\nProcess interrupted by user. Exiting...'));
+    // Perform any necessary cleanup here
+
+    process.exit(1); // Exit with a non-zero status code to indicate interruption
+});
