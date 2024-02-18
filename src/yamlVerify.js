@@ -10,6 +10,7 @@ import { promisify } from 'util'
 
 const readFileAsync = promisify(fs.readFile)
 let validationFailed = false // Flag to track any validation failure
+let totalErrors = 0
 
 // Asynchronous function to check for duplicates in YAML data
 const checkForDuplicates = (data) => {
@@ -31,7 +32,7 @@ const checkForDuplicates = (data) => {
 					recordTypes.has(recordType) &&
 					recordType !== 'noRecordType'
 				) {
-					const errorMessage = `Duplicate layout/recordType combination found in 'layoutAssignments' at index ${index}: layout='${layout}', recordType='${recordType}'`
+					const errorMessage = `Duplicate layout/recordType combination found in 'layoutAssignments': layout='${layout}', recordType='${recordType}'`
 					errors.push(errorMessage)
 				} else {
 					recordTypes.add(recordType)
@@ -109,8 +110,9 @@ async function processFilesInBatches(files, batchSize = 50) {
 			)
 		} else if (result.value.status === 'rejected') {
 			console.error(
-				`${chalk.red('✗')} Validation ${chalk.bgRed.whiteBright('FAILED')} for file ${result.value.file}; Errors: ${result.value.reason}`,
+				`${chalk.red('✗')} Validation ${chalk.bgRed.whiteBright('FAILED')} for file ${result.value.file}; Errors: ${chalk.redBright(result.value.reason)}\n`,
 			)
+			totalErrors += 1
 			validationFailed = true // Set the flag to true if any validation fails
 		}
 	})
@@ -140,9 +142,14 @@ program
 		// Check the flag and exit with status code 1 if any validation failed
 		if (validationFailed) {
 			console.error(
-				chalk.red('Some files failed validation.'),
+				`\nStatus: ${totalErrors} file(s) ${chalk.bgRed.whiteBright('FAILED')} validation.`
 			)
 			process.exit(1)
+		} else {
+			console.log(
+				`\nStatus: ${chalk.bgAnsi256(22).whiteBright('PASSED')} validation.`
+			)
+
 		}
 	})
 
