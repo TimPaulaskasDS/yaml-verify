@@ -39,5 +39,8 @@
     "lint-staged": "^15.2.2",
     "nodemon": "^3.0.3",
     "prettier": "^3.2.5"
-  }
+  },
+  "lint-staged": {
+    "*.js": ["eslint --fix", "git add"]
+  }  
 }
