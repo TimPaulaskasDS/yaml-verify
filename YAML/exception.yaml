@@ -1,0 +1,8 @@
+layoutAssignments:
+  - layout: ABM_Product_Codes__mdt-ABM Product Code Layout
+  - layout: AE_AM_Mapping__c-AE-AM Mapping Layout
+  - layout: AE_AM_Mapping__c-AE-AM Mapping Layout
+    recordType: AE_AM_Mapping__c.AE_AM_Mapping
+  - layout: AE_AM_Mapping__c-Terr Size AM Mapping Layout
+    recordType: AE_AM_Mapping__c.Terr_Size_AM_Mapping
+  - layout: AP_Relationship_Map__c-AP Relationship Map Layout
