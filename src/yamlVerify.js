@@ -5,43 +5,14 @@ import { program } from 'commander'
 import yaml from 'js-yaml'
 import fs from 'fs'
 import ora from 'ora'
-import _ from 'lodash'
 import * as globES from 'glob'; // Adjusted import statement for glob
+import { findDuplicates, checkForDuplicates } from './yamlUtils.js'; // Importing the functions
 
 const findYamlFiles = (directory) => {
   const files = globES.sync(`${directory}/**/*.?(yaml|yml)`);
   return files;
 }
 
-
-const findDuplicates = (array, key) =>
-	_(array)
-		.groupBy(key)
-		.pickBy((x) => x.length > 1)
-		.value()
-
-const checkForDuplicates = (data) => {
-	const errors = [] // Array to store errors
-	Object.keys(data).forEach((key) => {
-		if (Array.isArray(data[key])) {
-			data[key].forEach((item, index) => {
-				if (_.isPlainObject(item)) {
-					const uniqueKey = Object.keys(item)[0]
-					const duplicates = findDuplicates(data[key], uniqueKey)
-					if (!_.isEmpty(duplicates)) {
-						// Construct error message and push to errors array
-						const duplicateKeys = Object.keys(duplicates)
-						const errorMessage = `Duplicate entries found in '${key}' for key '${uniqueKey}': ${duplicateKeys.join(', ')}`
-						if (!errors.includes(errorMessage)) {
-							errors.push(errorMessage)
-						}
-					}
-				}
-			})
-		}
-	})
-	return errors // Return array of errors
-}
 
 program
 	.version('1.0.0')
@@ -98,3 +69,4 @@ program
 	})
 
 program.parse()
+export { findDuplicates, checkForDuplicates }
