@@ -5,7 +5,6 @@ import { program } from 'commander'
 import yaml from 'js-yaml'
 import fs from 'fs'
 const fsPromises = fs.promises // Use fs.promises for async operations
-import ora from 'ora'
 import glob from 'fast-glob'
 import { Listr } from 'listr2'
 
