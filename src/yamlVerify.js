@@ -113,12 +113,12 @@ async function processFilesInBatches(files, batchSize = 50) {
 			if (showSuccess) {
 				// Only log success messages if showSuccess is true
 				console.log(
-					`${chalk.green('✓')} Validation ${chalk.bgAnsi256(22).whiteBright('PASSED')} for file ${result.value.file}`,
+					`${chalk.green('✓')} Validation ${chalk.bgAnsi256(22).whiteBright('PASSED')} for file ${chalk.underline(result.value.file)}`,
 				)
 			}
 		} else if (result.value.status === 'rejected') {
 			console.error(
-				`${chalk.red('✗')} Validation ${chalk.bgRed.whiteBright('FAILED')} for file ${result.value.file}; Errors: ${chalk.redBright(result.value.reason)}\n`,
+				`${chalk.red('✗')} Validation ${chalk.bgRed.whiteBright('FAILED')} for file ${chalk.underline(result.value.file)}; Errors: ${chalk.redBright(result.value.reason)}\n`,
 			)
 			totalErrors += 1
 			validationFailed = true // Set the flag to true if any validation fails
