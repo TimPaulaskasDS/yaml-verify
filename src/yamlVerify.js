@@ -100,10 +100,14 @@ async function processFilesInBatches(files, batchSize = 50) {
 		const batch = files.slice(index, index + batchSize)
 		const promises = batch.map((file) => validateFile(file))
 		results.push(...(await Promise.allSettled(promises)))
+
+		// Update the spinner text to show progress
+		spinner.text = `Validating YAML files... ${index + batch.length}/${files.length} files processed`;
+
 		index += batchSize
 	}
 
-	spinner.clear()
+	spinner.stop()
 	results.forEach((result) => {
 		totalFiles += 1
 		if (
@@ -124,6 +128,8 @@ async function processFilesInBatches(files, batchSize = 50) {
 			validationFailed = true // Set the flag to true if any validation fails
 		}
 	})
+
+	spinner.stop()
 }
 
 // Setting up the CLI utility with commander
@@ -133,21 +139,36 @@ program
 	.arguments('<filePaths...>')
 	.action(async (filePaths) => {
 		showSuccess = program.opts().showSuccess // Update the showSuccess flag based on the command line option
-		let allFilesPromises = filePaths.map(async (filePath) => {
-			const stat = await fs.promises.stat(filePath)
-			if (stat.isDirectory()) {
-				return findYamlFilesAsync(filePath)
-			}
-			return [filePath]
-		})
+        let allFiles = [];
 
-		let allFilesArrays = await Promise.all(allFilesPromises)
-		let allFiles = allFilesArrays.flat()
+        for (const filePath of filePaths) {
+            try {
+                const stat = await fs.promises.stat(filePath);
+                if (stat.isDirectory()) {
+                    const files = await findYamlFilesAsync(filePath);
+                    allFiles.push(...files);
+                } else {
+                    allFiles.push(filePath);
+                }
+            } catch (err) {
+                if (err.code === 'ENOENT') {
+                    console.error(chalk.red(`Error: The path '${filePath}' does not exist.`));
+                    continue; // Skip this path and continue with the next one
+                } else {
+                    throw err; // Rethrow unexpected errors
+                }
+            }
+        }
 
-		await processFilesInBatches(allFiles).catch((e) => {
-			console.error(chalk.red('An error occurred:'), e)
-			process.exit(1)
-		})
+        if (allFiles.length === 0) {
+            console.error(chalk.red('No valid file paths provided. Exiting...'));
+            process.exit(1);
+        }
+
+        await processFilesInBatches(allFiles).catch((e) => {
+            console.error(chalk.red('An error occurred:'), e);
+            process.exit(1);
+        });
 
 		// Execution of some code...
 		const endTime = new Date() // Capture the end time
