@@ -139,36 +139,21 @@ program
 	.arguments('<filePaths...>')
 	.action(async (filePaths) => {
 		showSuccess = program.opts().showSuccess // Update the showSuccess flag based on the command line option
-        let allFiles = [];
+		let allFilesPromises = filePaths.map(async (filePath) => {
+			const stat = await fs.promises.stat(filePath)
+			if (stat.isDirectory()) {
+				return findYamlFilesAsync(filePath)
+			}
+			return [filePath]
+		})
 
-        for (const filePath of filePaths) {
-            try {
-                const stat = await fs.promises.stat(filePath);
-                if (stat.isDirectory()) {
-                    const files = await findYamlFilesAsync(filePath);
-                    allFiles.push(...files);
-                } else {
-                    allFiles.push(filePath);
-                }
-            } catch (err) {
-                if (err.code === 'ENOENT') {
-                    console.error(chalk.red(`Error: The path '${filePath}' does not exist.`));
-                    continue; // Skip this path and continue with the next one
-                } else {
-                    throw err; // Rethrow unexpected errors
-                }
-            }
-        }
+		let allFilesArrays = await Promise.all(allFilesPromises)
+		let allFiles = allFilesArrays.flat()
 
-        if (allFiles.length === 0) {
-            console.error(chalk.red('No valid file paths provided. Exiting...'));
-            process.exit(1);
-        }
-
-        await processFilesInBatches(allFiles).catch((e) => {
-            console.error(chalk.red('An error occurred:'), e);
-            process.exit(1);
-        });
+		await processFilesInBatches(allFiles).catch((e) => {
+			console.error(chalk.red('An error occurred:'), e)
+			process.exit(1)
+		})
 
 		// Execution of some code...
 		const endTime = new Date() // Capture the end time
