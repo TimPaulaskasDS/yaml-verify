@@ -101,8 +101,13 @@ async function processFilesInBatches(files, batchSize = 50) {
 		const promises = batch.map((file) => validateFile(file))
 		results.push(...(await Promise.allSettled(promises)))
 
-		// Update the spinner text to show progress
-		spinner.text = `Validating YAML files... ${index + batch.length}/${files.length} files processed`
+		// Calculate the rounded down percentage of processed files
+		const percentage = Math.floor(
+			((index + batch.length) / files.length) * 100,
+		)
+
+		// Update the spinner text to show the rounded down percentage
+		spinner.text = `Validating YAML files... ${percentage}% completed`
 
 		index += batchSize
 	}
