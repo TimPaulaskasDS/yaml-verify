@@ -22,7 +22,7 @@ const checkForDuplicates = (data) => {
 	if (data.layoutAssignments) {
 		const layoutMap = new Map()
 
-		data.layoutAssignments.forEach((item, index) => {
+		data.layoutAssignments.forEach((item) => {
 			const layout = item.layout
 			const recordType = item.recordType || 'noRecordType'
 
@@ -48,7 +48,7 @@ const checkForDuplicates = (data) => {
 		if (key !== 'layoutAssignments' && Array.isArray(value)) {
 			const seen = new Set()
 
-			value.forEach((item, index) => {
+			value.forEach((item) => {
 				const itemKey = JSON.stringify(item)
 
 				if (seen.has(itemKey)) {
@@ -102,7 +102,7 @@ async function processFilesInBatches(files, batchSize = 50) {
 		results.push(...(await Promise.allSettled(promises)))
 
 		// Update the spinner text to show progress
-		spinner.text = `Validating YAML files... ${index + batch.length}/${files.length} files processed`;
+		spinner.text = `Validating YAML files... ${index + batch.length}/${files.length} files processed`
 
 		index += batchSize
 	}
@@ -132,6 +132,15 @@ async function processFilesInBatches(files, batchSize = 50) {
 	spinner.stop()
 }
 
+// Function to check if the provided path exists
+async function checkPathExists(path) {
+	try {
+		await fs.promises.stat(path)
+	} catch (error) {
+		throw new Error(`Path does not exist: ${path}`)
+	}
+}
+
 // Setting up the CLI utility with commander
 program
 	.description('A CLI utility to ensure proper formatting of YAML files.')
@@ -139,16 +148,25 @@ program
 	.arguments('<filePaths...>')
 	.action(async (filePaths) => {
 		showSuccess = program.opts().showSuccess // Update the showSuccess flag based on the command line option
-		let allFilesPromises = filePaths.map(async (filePath) => {
+
+		// Check if all provided paths exist
+		try {
+			await Promise.all(filePaths.map(checkPathExists))
+		} catch (error) {
+			console.error(chalk.red(error.message))
+			process.exit(1)
+		}
+
+		let allFiles = []
+		for (const filePath of filePaths) {
 			const stat = await fs.promises.stat(filePath)
 			if (stat.isDirectory()) {
-				return findYamlFilesAsync(filePath)
+				const files = await findYamlFilesAsync(filePath)
+				allFiles = allFiles.concat(files) // Use concat instead of push with spread to avoid call stack issues
+			} else {
+				allFiles.push(filePath)
 			}
-			return [filePath]
-		})
-
-		let allFilesArrays = await Promise.all(allFilesPromises)
-		let allFiles = allFilesArrays.flat()
+		}
 
 		await processFilesInBatches(allFiles).catch((e) => {
 			console.error(chalk.red('An error occurred:'), e)
@@ -177,7 +195,5 @@ program.parse(process.argv)
 
 process.on('SIGINT', () => {
 	console.log(chalk.yellow('\nProcess interrupted by user. Exiting...'))
-	// Perform any necessary cleanup here
-
 	process.exit(1) // Exit with a non-zero status code to indicate interruption
 })
