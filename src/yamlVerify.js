@@ -1,18 +1,66 @@
 #!/usr/bin/env node
 
 import fs from 'fs'
+import path from 'path'
 import chalk from 'chalk'
 import { program } from 'commander'
 import yaml from 'js-yaml'
 import glob from 'fast-glob'
 import ora from 'ora'
 
+const pkg = JSON.parse(fs.readFileSync(path.resolve('./package.json'), 'utf-8'))
 const startTime = new Date() // Capture the start time
 
 let validationFailed = false // Flag to track any validation failure
 let totalErrors = 0
 let totalFiles = 0
 let showSuccess = false
+
+function displayHeader() {
+	const box = {
+		topLeft: '╭',
+		topRight: '╮',
+		bottomLeft: '╰',
+		bottomRight: '╯',
+		horizontal: '─',
+		vertical: '│',
+	}
+	const versionString = `yaml-verify v${pkg.version}${
+		process.stdout.columns > pkg.description.length + 15
+			? ' - ' + pkg.description
+			: ''
+	}`
+	let titleMessage = `✅ ${chalk.yellowBright(
+		versionString,
+	)} ❌`
+	const padAmount = Math.round(
+		(process.stdout.columns - versionString.length) / 2,
+	)
+	titleMessage = ' '.repeat(padAmount) + titleMessage
+	titleMessage = titleMessage.padEnd(process.stdout.columns - 2)
+	titleMessage =
+		chalk.blackBright(box.vertical) +
+		'  ' +
+		titleMessage +
+		'      ' +
+		chalk.blackBright(box.vertical)
+	console.log(
+		`${chalk.blackBright(
+			box.topLeft +
+				box.horizontal.repeat(process.stdout.columns - 2) +
+				box.topRight,
+		)}`,
+	)
+	console.log(titleMessage)
+	console.log(
+		`${chalk.blackBright(
+			box.bottomLeft +
+				box.horizontal.repeat(process.stdout.columns - 2) +
+				box.bottomRight,
+		)}`,
+	)
+	console.log()
+}
 
 // Asynchronous function to check for duplicates in YAML data
 const checkForDuplicates = (data) => {
@@ -50,12 +98,15 @@ const checkForDuplicates = (data) => {
 
 			value.forEach((item) => {
 				const itemKey = JSON.stringify(item)
+				const itemObject = JSON.parse(itemKey)
+				const firstKey = Object.keys(itemObject)[0]
+				const firstValue = itemObject[firstKey]
 
-				if (seen.has(itemKey)) {
-					const errorMessage = `Duplicate entry found in '${key}': ${itemKey}`
+				if (seen.has(firstValue)) {
+					const errorMessage = `Duplicate entry found in '${key}': ${firstKey} with value ${firstValue}`
 					errors.push(errorMessage)
 				} else {
-					seen.add(itemKey)
+					seen.add(firstValue)
 				}
 			})
 		}
@@ -127,7 +178,7 @@ async function processFilesInBatches(files, batchSize = 50) {
 			}
 		} else if (result.value.status === 'rejected') {
 			console.error(
-				`${chalk.red('✗')} Validation ${chalk.bgRed.whiteBright('FAILED')} for file ${chalk.underline(result.value.file)}; Errors: ${chalk.redBright(result.value.reason)}\n`,
+				`${chalk.red('✗')} Validation ${chalk.bgRed.whiteBright('FAILED')} for file ${chalk.underline(result.value.file)};\n\rError: ${chalk.redBright(result.value.reason)}\n`,
 			)
 			totalErrors += 1
 			validationFailed = true // Set the flag to true if any validation fails
@@ -150,8 +201,10 @@ async function checkPathExists(path) {
 program
 	.description('A CLI utility to ensure proper formatting of YAML files.')
 	.option('-s, --show-success', 'Display messages for successful validations')
+	.version(pkg.version)
 	.arguments('<filePaths...>')
 	.action(async (filePaths) => {
+		displayHeader()
 		showSuccess = program.opts().showSuccess // Update the showSuccess flag based on the command line option
 
 		// Check if all provided paths exist

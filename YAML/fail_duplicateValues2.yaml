@@ -1,0 +1,11 @@
+object: Account_Aggregated_Detail__c
+fieldPermissions:
+  - field: Account__c
+    editable: true
+    readable: true
+  - field: Template_Used__c
+    editable: true
+    readable: true
+  - field: Template_Used__c
+    editable: true
+    readable: false
