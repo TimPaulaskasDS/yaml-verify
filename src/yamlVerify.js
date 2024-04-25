@@ -7,6 +7,7 @@ import { program } from 'commander'
 import yaml from 'js-yaml'
 import glob from 'fast-glob'
 import ora from 'ora'
+import ci from 'ci-info'
 
 const pkg = JSON.parse(fs.readFileSync(path.resolve('./package.json'), 'utf-8'))
 const startTime = new Date() // Capture the start time
@@ -26,7 +27,7 @@ function displayHeader() {
 		vertical: '│',
 	}
 	const versionString = `yaml-verify v${pkg.version}${
-		process.stdout.columns > pkg.description.length + 15
+		process.stdout.columns - 30 > pkg.description.length
 			? ' - ' + pkg.description
 			: ''
 	}`
@@ -34,7 +35,7 @@ function displayHeader() {
 		versionString,
 	)} ❌`
 	const padAmount = Math.round(
-		(process.stdout.columns - versionString.length) / 2,
+		(process.stdout.columns - (versionString.length + 4)) / 2,
 	)
 	titleMessage = ' '.repeat(padAmount) + titleMessage
 	titleMessage = titleMessage.padEnd(process.stdout.columns - 2)
@@ -89,28 +90,28 @@ const checkForDuplicates = (data) => {
 				}
 			}
 		})
+	} else {
+		// Standard duplicate check for other keys
+		Object.entries(data).forEach(([key, value]) => {
+			if (Array.isArray(value)) {
+				const seen = new Set()
+
+				value.forEach((item) => {
+					const itemKey = JSON.stringify(item)
+					const itemObject = JSON.parse(itemKey)
+					const firstKey = data.recordTypeVisibilities ? 'recordType' : Object.keys(itemObject)[0]
+					const firstValue = itemObject[firstKey]
+
+					if (seen.has(firstValue)) {
+						const errorMessage = `Duplicate entry found in '${key}': ${firstKey} with value ${firstValue}`
+						errors.push(errorMessage)
+					} else {
+						seen.add(firstValue)
+					}
+				})
+			}
+		})
 	}
-
-	// Standard duplicate check for other keys
-	Object.entries(data).forEach(([key, value]) => {
-		if (key !== 'layoutAssignments' && Array.isArray(value)) {
-			const seen = new Set()
-
-			value.forEach((item) => {
-				const itemKey = JSON.stringify(item)
-				const itemObject = JSON.parse(itemKey)
-				const firstKey = Object.keys(itemObject)[0]
-				const firstValue = itemObject[firstKey]
-
-				if (seen.has(firstValue)) {
-					const errorMessage = `Duplicate entry found in '${key}': ${firstKey} with value ${firstValue}`
-					errors.push(errorMessage)
-				} else {
-					seen.add(firstValue)
-				}
-			})
-		}
-	})
 
 	return errors
 }
@@ -145,7 +146,11 @@ async function validateFile(file) {
 async function processFilesInBatches(files, batchSize = 50) {
 	let index = 0
 	const results = []
-	const spinner = ora('Validating YAML files...').start() // Start the spinner
+	const spinner = ora('Validating YAML files...')
+
+	if (!ci.isCI) {
+		spinner.start() // Start the spinner
+	}
 
 	while (index < files.length) {
 		const batch = files.slice(index, index + batchSize)
@@ -163,7 +168,9 @@ async function processFilesInBatches(files, batchSize = 50) {
 		index += batchSize
 	}
 
-	spinner.stop()
+	if (!ci.isCI) {
+		spinner.stop() // Stop the spinner
+	}
 	results.forEach((result) => {
 		totalFiles += 1
 		if (
@@ -185,7 +192,9 @@ async function processFilesInBatches(files, batchSize = 50) {
 		}
 	})
 
-	spinner.stop()
+	if (ci.isCI) {
+		spinner.stop()
+	}
 }
 
 // Function to check if the provided path exists

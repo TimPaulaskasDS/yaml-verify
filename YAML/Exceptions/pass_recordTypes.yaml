@@ -1,0 +1,11 @@
+object: test
+recordTypeVisibilities:
+  - default: false
+    recordType: test1
+    visible: true
+  - default: false
+    recordType: test2
+    visible: true
+  - default: true
+    recordType: test3
+    visible: true

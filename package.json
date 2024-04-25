@@ -23,6 +23,7 @@
   "license": "ISC",
   "dependencies": {
     "chalk": "^5.3.0",
+    "ci-info": "^4.0.0",
     "commander": "^12.0.0",
     "fast-glob": "^3.3.2",
     "js-yaml": "^4.1.0",
