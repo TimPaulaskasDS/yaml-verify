@@ -1,6 +1,6 @@
 {
   "name": "yaml-verify",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "type": "module",
   "description": "A CLI utility to ensure proper formatting of YAML files.",
   "main": "src/yamlVerify.js",
