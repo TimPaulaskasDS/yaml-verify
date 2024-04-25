@@ -1,0 +1,7 @@
+loginIpRanges:
+  - description: Test Prod IP
+    endAddress: 127.0.0.1
+    startAddress: 127.0.0.2
+  - description: Test Prod IP
+    endAddress: 127.0.0.2
+    startAddress: 127.0.0.3

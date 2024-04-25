@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 
 import fs from 'fs'
-import path from 'path'
 import chalk from 'chalk'
 import { program } from 'commander'
 import yaml from 'js-yaml'
 import glob from 'fast-glob'
 import ora from 'ora'
 import ci from 'ci-info'
+import pkg from '../lib/pkgObj.cjs'
 
-const pkg = JSON.parse(fs.readFileSync(path.resolve('./package.json'), 'utf-8'))
 const startTime = new Date() // Capture the start time
 
 let validationFailed = false // Flag to track any validation failure
@@ -26,11 +25,9 @@ function displayHeader() {
 		horizontal: '─',
 		vertical: '│',
 	}
-	const versionString = `yaml-verify v${pkg.version}${
-		process.stdout.columns - 30 > pkg.description.length
-			? ' - ' + pkg.description
-			: ''
-	}`
+	const titleLength = process.stdout.columns - pkg.description.length - 'yaml-verify v'.length - 16 // 16 is the length needed for unicode characters
+	const versionString = `yaml-verify v${pkg.version}${titleLength > 0 ? ' - ' + pkg.description : ''
+		}`
 	let titleMessage = `✅ ${chalk.yellowBright(
 		versionString,
 	)} ❌`
@@ -39,25 +36,21 @@ function displayHeader() {
 	)
 	titleMessage = ' '.repeat(padAmount) + titleMessage
 	titleMessage = titleMessage.padEnd(process.stdout.columns - 2)
-	titleMessage =
-		chalk.blackBright(box.vertical) +
-		'  ' +
-		titleMessage +
-		'      ' +
+	titleMessage = chalk.blackBright(box.vertical) + titleMessage + ' '.repeat(8) +
 		chalk.blackBright(box.vertical)
 	console.log(
 		`${chalk.blackBright(
 			box.topLeft +
-				box.horizontal.repeat(process.stdout.columns - 2) +
-				box.topRight,
+			box.horizontal.repeat(process.stdout.columns - 2) +
+			box.topRight,
 		)}`,
 	)
 	console.log(titleMessage)
 	console.log(
 		`${chalk.blackBright(
 			box.bottomLeft +
-				box.horizontal.repeat(process.stdout.columns - 2) +
-				box.bottomRight,
+			box.horizontal.repeat(process.stdout.columns - 2) +
+			box.bottomRight,
 		)}`,
 	)
 	console.log()
@@ -90,8 +83,26 @@ const checkForDuplicates = (data) => {
 				}
 			}
 		})
+	} else if (data.loginIpRanges) {
+		// Duplicate check on entire array
+		Object.entries(data).forEach(([key, value]) => {
+			if (Array.isArray(value)) {
+				const seen = new Set()
+
+				value.forEach((item) => {
+					const itemKey = JSON.stringify(item)
+
+					if (seen.has(itemKey)) {
+						const errorMessage = `Duplicate entry found in '${key}': ${itemKey}`
+						errors.push(errorMessage)
+					} else {
+						seen.add(itemKey)
+					}
+				})
+			}
+		})
 	} else {
-		// Standard duplicate check for other keys
+		// Duplicate check on key value pairs
 		Object.entries(data).forEach(([key, value]) => {
 			if (Array.isArray(value)) {
 				const seen = new Set()
@@ -99,7 +110,9 @@ const checkForDuplicates = (data) => {
 				value.forEach((item) => {
 					const itemKey = JSON.stringify(item)
 					const itemObject = JSON.parse(itemKey)
-					const firstKey = data.recordTypeVisibilities ? 'recordType' : Object.keys(itemObject)[0]
+					const firstKey = data.recordTypeVisibilities
+						? 'recordType'
+						: Object.keys(itemObject)[0]
 					const firstValue = itemObject[firstKey]
 
 					if (seen.has(firstValue)) {
